@@ -35,7 +35,10 @@ client.once("ready", () => {
 
 // PANNELLO
 client.on("messageCreate", async (message) => {
-  if (message.content === "!ticketpanel" && message.member.permissions.has("Administrator")) {
+  if (
+    message.content === "!ticketpanel" &&
+    message.member.permissions.has(PermissionsBitField.Flags.Administrator)
+  ) {
     const menu = new StringSelectMenuBuilder()
       .setCustomId("ticket_category")
       .setPlaceholder("Scegli una categoria")
@@ -99,16 +102,29 @@ client.on("interactionCreate", async (interaction) => {
   // DM UTENTE
   const userPerm = channel.permissionOverwrites.cache.find(p => p.type === 1);
   if (userPerm) {
-    const user = await client.users.fetch(userPerm.id);
-    user.send({ content: "📄 Transcript del tuo ticket", files: ["transcript.txt"] }).catch(() => {});
+    try {
+      const user = await client.users.fetch(userPerm.id);
+      await user.send({ content: "📄 Transcript del tuo ticket", files: ["transcript.txt"] });
+    } catch {
+      console.log("Impossibile inviare DM all'utente.");
+    }
   }
 
   // LOG
-  const log = await client.channels.fetch(LOG_CHANNEL_ID);
-  log.send({ content: `📁 Ticket chiuso: ${channel.name}`, files: ["transcript.txt"] });
+  try {
+    const log = await client.channels.fetch(LOG_CHANNEL_ID);
+    await log.send({ content: `📁 Ticket chiuso: ${channel.name}`, files: ["transcript.txt"] });
+  } catch {
+    console.log("Impossibile inviare log.");
+  }
 
   await interaction.reply({ content: "Ticket chiuso ✅", ephemeral: true });
-  setTimeout(() => channel.delete(), 3000);
+  setTimeout(() => {
+    channel.delete().catch(() => console.log("Impossibile eliminare il canale."));
+  }, 3000);
 });
 
-client.login(process.env.TOKEN);
+// LOGIN BOT con variabile d'ambiente sicura
+client.login(process.env.DISCORD_TOKEN)
+  .then(() => console.log("Bot connesso!"))
+  .catch(err => console.error("Errore login:", err));
