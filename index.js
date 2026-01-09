@@ -17,16 +17,20 @@ const client = new Client({
   ]
 });
 
-// 🔧 CONFIGURAZIONE
-const LOG_CHANNEL_ID = "ID_CANAL_LOG";
+// 🔧 CONFIG 
+const TICKET_PARENT_CHANNEL = "1458554542588170411";
+const LOG_CHANNEL_ID = "1458554542588170411";
+
 const TICKET_CATEGORIES = [
-  { label: "Assistenza", id: "ID_CATEGORIA_1" },
-  { label: "Pagamenti", id: "ID_CATEGORIA_2" }
+  "Assistenza",
+  "Pagamenti",
+  "Segnalazioni",
+  "Altro"
 ];
 
 // READY
 client.once("ready", () => {
-  console.log("Bot Ticket avanzato online ✅");
+  console.log("Bot Ticket online ✅");
 });
 
 // PANNELLO
@@ -37,8 +41,8 @@ client.on("messageCreate", async (message) => {
       .setPlaceholder("Scegli una categoria")
       .addOptions(
         TICKET_CATEGORIES.map(cat => ({
-          label: cat.label,
-          value: cat.id
+          label: cat,
+          value: cat
         }))
       );
 
@@ -51,13 +55,13 @@ client.on("messageCreate", async (message) => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isStringSelectMenu()) return;
 
-  const categoryId = interaction.values[0];
+  const category = interaction.values[0];
   const user = interaction.user;
   const guild = interaction.guild;
 
   const channel = await guild.channels.create({
     name: `ticket-${user.username}`,
-    parent: categoryId,
+    parent: TICKET_PARENT_CHANNEL,
     permissionOverwrites: [
       { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
       { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
@@ -69,11 +73,9 @@ client.on("interactionCreate", async (interaction) => {
     .setLabel("🔒 Chiudi Ticket")
     .setStyle(ButtonStyle.Danger);
 
-  const row = new ActionRowBuilder().addComponents(closeBtn);
-
   channel.send({
-    content: `🎫 Ticket di <@${user.id}>`,
-    components: [row]
+    content: `🎫 **Ticket di <@${user.id}>**\n📂 Categoria: **${category}**`,
+    components: [new ActionRowBuilder().addComponents(closeBtn)]
   });
 
   interaction.reply({ content: "Ticket creato ✅", ephemeral: true });
@@ -95,14 +97,14 @@ client.on("interactionCreate", async (interaction) => {
   fs.writeFileSync("transcript.txt", transcript);
 
   // DM UTENTE
-  const userId = channel.permissionOverwrites.cache.find(p => p.type === 1)?.id;
-  if (userId) {
-    const user = await client.users.fetch(userId);0
+  const userPerm = channel.permissionOverwrites.cache.find(p => p.type === 1);
+  if (userPerm) {
+    const user = await client.users.fetch(userPerm.id);
     user.send({ content: "📄 Transcript del tuo ticket", files: ["transcript.txt"] }).catch(() => {});
   }
 
-  // CANALE LOG
-  const log = await client.channels.fetch(1458554596128456795);
+  // LOG
+  const log = await client.channels.fetch(LOG_CHANNEL_ID);
   log.send({ content: `📁 Ticket chiuso: ${channel.name}`, files: ["transcript.txt"] });
 
   await interaction.reply({ content: "Ticket chiuso ✅", ephemeral: true });
